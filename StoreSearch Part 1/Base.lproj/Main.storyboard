@@ -25,8 +25,29 @@
                                     <outlet property="dataSource" destination="BYZ-38-t0r" id="Ybr-XN-kyX"/>
                                 </connections>
                             </tableView>
+                            <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" id="ZSo-nX-gqy">
+                                <rect key="frame" x="0.0" y="81" width="375" height="44"/>
+                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
+                                <items>
+                                    <barButtonItem style="plain" id="mGu-ec-bXY">
+                                        <segmentedControl key="customView" opaque="NO" contentMode="scaleToFill" misplaced="YES" contentHorizontalAlignment="left" contentVerticalAlignment="top" segmentControlStyle="bar" selectedSegmentIndex="0" id="enf-U0-9tV">
+                                            <rect key="frame" x="16" y="5.5" width="343" height="33"/>
+                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                            <segments>
+                                                <segment title="All"/>
+                                                <segment title="Music"/>
+                                                <segment title="Software"/>
+                                                <segment title="E-books"/>
+                                            </segments>
+                                            <connections>
+                                                <action selector="segmentChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="xuJ-LI-2Mu"/>
+                                            </connections>
+                                        </segmentedControl>
+                                    </barButtonItem>
+                                </items>
+                            </toolbar>
                             <searchBar contentMode="redraw" placeholder="App name, artist, song, album, e-book" translatesAutoresizingMaskIntoConstraints="NO" id="vQt-Pp-JeS">
-                                <rect key="frame" x="0.0" y="20" width="375" height="56"/>
+                                <rect key="frame" x="0.0" y="20" width="375" height="61"/>
                                 <color key="barTintColor" name="SearchBar"/>
                                 <textInputTraits key="textInputTraits"/>
                                 <connections>
@@ -42,12 +63,14 @@
                             <constraint firstItem="vQt-Pp-JeS" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" id="DG2-l3-oja"/>
                             <constraint firstItem="vQt-Pp-JeS" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="IoI-43-hTn"/>
                             <constraint firstItem="vQt-Pp-JeS" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="Lp4-h4-yqD"/>
+                            <constraint firstItem="ZSo-nX-gqy" firstAttribute="top" secondItem="vQt-Pp-JeS" secondAttribute="bottom" id="SiA-SQ-828"/>
                             <constraint firstItem="uws-p1-9xd" firstAttribute="top" secondItem="8bC-Xf-vdC" secondAttribute="top" id="Xi8-k2-8n8"/>
                             <constraint firstItem="uws-p1-9xd" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="g2o-pV-NwP"/>
                         </constraints>
                     </view>
                     <connections>
                         <outlet property="searchBar" destination="vQt-Pp-JeS" id="9wn-nv-zGt"/>
+                        <outlet property="segmentedControl" destination="enf-U0-9tV" id="CJ0-58-gah"/>
                         <outlet property="tableView" destination="uws-p1-9xd" id="aho-5r-uMZ"/>
                     </connections>
                 </viewController>

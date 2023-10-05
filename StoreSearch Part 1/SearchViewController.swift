@@ -10,7 +10,11 @@ import UIKit
 class SearchViewController: UIViewController {
     @IBOutlet weak var searchBar: UISearchBar!
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var segmentedControl: UISegmentedControl!
 
+    @IBAction func segmentChanged(_ sender: UISegmentedControl) {
+        performSearch()
+    }
     
     //Chapter 32 - The search bar delegate method will put some fake data into this array and then display it using the table.
     var searchResults = [SearchResult]()
@@ -32,7 +36,7 @@ class SearchViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         //Chapter 32 - This tells the table view to add a 51-point margin at the top to account for the Search Bar.
-        tableView.contentInset = UIEdgeInsets(top: 51, left: 0, bottom: 0, right: 0)
+        tableView.contentInset = UIEdgeInsets(top: 91, left: 0, bottom: 0, right: 0)
         //Chapter 33 - load the nib you just created then you ask the table view to register this nib for the reuse identifier “SearchResultCell”.
         var cellNib = UINib(nibName: TableView.CellIdentifiers.searchResultCell, bundle: nil)
         tableView.register(cellNib, forCellReuseIdentifier: TableView.CellIdentifiers.searchResultCell)
@@ -46,11 +50,19 @@ class SearchViewController: UIViewController {
     }
     
     // MARK: - Helper Methods
-    //Chapter - 34 - This first builds a URL string by placing the search text behind the “term=” parameter, and then turns this string into a URL object. Because URL(string:) is a failable initializer, it returns an optional. You force unwrap that using url! to return an actual URL object.
-    func iTunesURL(searchText: String) -> URL {
-        //chapter 34 - This calls the addingPercentEncoding(withAllowedCharacters:) method to create a new string where all the special characters are escaped, and you use that string for the search term.
-        let encodedText = searchText.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
-        let urlString = String(format: "https://itunes.apple.com/search?term=%@&limit=200", encodedText)
+    //Chapter - 36 - This first turns the category index from a number into a string, kind. Note that the category index is passed to the method as a new parameter. Then it puts this string behind the &entity= parameter in the URL. For the “All” category, the entity value is empty, but for the other categories it is “musicTrack”, “software”, and “ebook”, respectively. Also note that instead of calling String(format:), you now construct the URL string using string interpolation.
+    func iTunesURL(searchText: String, category: Int) -> URL {
+        let kind: String
+        switch category {
+        case 1: kind = "musicTrack"
+        case 2: kind = "software"
+        case 3: kind = "ebook"
+        default: kind = ""
+        }
+        let encodedText = searchText.addingPercentEncoding(
+            withAllowedCharacters: CharacterSet.urlQueryAllowed)!
+        let urlString = "https://itunes.apple.com/search?" +
+        "term=\(encodedText)&limit=200&entity=\(kind)"
         let url = URL(string: urlString)
         return url!
     }
@@ -89,8 +101,11 @@ class SearchViewController: UIViewController {
 // MARK: - Search Bar Delegate
 //Chapter 32 - instantiate a new String array and replace the contents of searchResults property with it. This is done each time the user performs a search.
 extension SearchViewController: UISearchBarDelegate {
-    //Chapter 34 - call the new iTunesURL(searchText:) method.
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        performSearch()
+    }
+    //Chapter 34 - call the new iTunesURL(searchText:) method.
+    func performSearch() {
         if !searchBar.text!.isEmpty {
             searchBar.resignFirstResponder()
             
@@ -105,7 +120,7 @@ extension SearchViewController: UISearchBarDelegate {
             // Replace all code after this with new code below
             // 1 - Create the URL object using the search text, just like before.
 
-            let url = iTunesURL(searchText: searchBar.text!)
+            let url = iTunesURL(searchText: searchBar.text!, category: segmentedControl.selectedSegmentIndex)
             // 2 - Get a shared URLSession instance, which uses the default configuration with respect to caching, cookies, and other web stuff.
             let session = URLSession.shared
             // 3 - Create a data task. Data tasks are for fetching the contents of a given URL. The code from the completion handler will be invoked when the data task has received a response from the server.
