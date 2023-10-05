@@ -15,12 +15,14 @@ class SearchViewController: UIViewController {
     //Chapter 32 - The search bar delegate method will put some fake data into this array and then display it using the table.
     var searchResults = [SearchResult]()
     var hasSearched = false
+    var isLoading = false
 
     //Chapter 33 - This defines a new struct, TableView, containing a secondary struct named CellIdentifiers which contains a constant named searchResultCell with the value “SearchResultCell”.
     struct TableView {
         struct CellIdentifiers {
             static let searchResultCell = "SearchResultCell"
             static let nothingFoundCell = "NothingFoundCell"
+            static let loadingCell = "LoadingCell"
         }
     }
     
@@ -35,6 +37,9 @@ class SearchViewController: UIViewController {
         cellNib = UINib(nibName: TableView.CellIdentifiers.nothingFoundCell, bundle: nil)
         tableView.register(cellNib, forCellReuseIdentifier: TableView.CellIdentifiers.nothingFoundCell)
         searchBar.becomeFirstResponder()
+        // Chapter 35 - let the table view’s data source know that the app is currently in a state of downloading data from the server.
+        cellNib = UINib(nibName: TableView.CellIdentifiers.loadingCell, bundle: nil)
+        tableView.register(cellNib, forCellReuseIdentifier: TableView.CellIdentifiers.loadingCell)
     }
     
     // MARK: - Helper Methods
@@ -42,11 +47,12 @@ class SearchViewController: UIViewController {
     func iTunesURL(searchText: String) -> URL {
         //chapter 34 - This calls the addingPercentEncoding(withAllowedCharacters:) method to create a new string where all the special characters are escaped, and you use that string for the search term.
         let encodedText = searchText.addingPercentEncoding(withAllowedCharacters: CharacterSet.urlQueryAllowed)!
-        let urlString = String(format: "https://itunes.apple.com/search?term=%@", encodedText)
+        let urlString = String(format: "https://itunes.apple.com/search?term=%@&limit=200", encodedText)
         let url = URL(string: urlString)
         return url!
     }
     
+    /*REMOVED
     func performStoreRequest(with url: URL) -> Data? {
         do {
             return try Data(contentsOf: url)
@@ -56,6 +62,7 @@ class SearchViewController: UIViewController {
             return nil
         }
     }
+     */
     
     //Chapter 34 - You use a JSONDecoder object to convert the response data from the server to a temporary ResultArray object from which you extract the results property.
     func parse(data: Data) -> [SearchResult] {
@@ -83,18 +90,48 @@ extension SearchViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         if !searchBar.text!.isEmpty {
             searchBar.resignFirstResponder()
+            
+            isLoading = true
+            tableView.reloadData()
+            
             hasSearched = true
             searchResults = []
+            // Replace all code after this with new code below
+            // 1 - Create the URL object using the search text, just like before.
+
             let url = iTunesURL(searchText: searchBar.text!)
-            print("URL: '\(url)'")
-            //chapter 34 - You simply change the constant for the result from the call to performStoreRequest(with:) from jsonString to data, call the new parse(data:) method, and print the return value.
-            if let data = performStoreRequest(with: url) {
-                searchResults = parse(data: data)
-                //Chapter 34 - After the results array is fetched, you call sort on the searchResults array with a trailing closure that determines the sorting rules.
-                searchResults.sort { $0 < $1 } //or searchResults.sort(by: <)
+            // 2 - Get a shared URLSession instance, which uses the default configuration with respect to caching, cookies, and other web stuff.
+            let session = URLSession.shared
+            // 3 - Create a data task. Data tasks are for fetching the contents of a given URL. The code from the completion handler will be invoked when the data task has received a response from the server.
+            let dataTask = session.dataTask(with: url) {data, response,
+                error in // 4 - The response parameter has the data type URLResponse, but that doesn’t have a property for the status code. Because you’re using the HTTP protocol, what you’ve really received is an HTTPURLResponse object, a subclass of URLResponse. So, first you cast it to the proper type, and then look at its statusCode property — you’ll consider the job a success only if the status code is 200.
+                if let error = error {
+                  print("Failure! \(error.localizedDescription)")
+                } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                    if let data = data {
+                        self.searchResults = self.parse(data: data)
+                        self.searchResults.sort(by: <)
+                        DispatchQueue.main.async {
+                            self.isLoading = false
+                            self.tableView.reloadData()
+                        }
+                        return
+                    }
+                } else {
+                  print("Failure! \(response!)")
+                }
+                //The code execution reaches here only if something went wrong. You call showNetworkError() to let the user know about the problem.
+                DispatchQueue.main.async {
+                  self.hasSearched = false
+                  self.isLoading = false
+                  self.tableView.reloadData()
+                  self.showNetworkError()
+                }
             }
-            tableView.reloadData()
+            // 5 - Finally, once you have created the data task, you need to call resume() to start it. This sends the request to the server on a background thread. So, the app is immediately free to continue
+            dataTask.resume()
         }
+        
     }
     
     func position(for bar: UIBarPositioning) -> UIBarPosition {
@@ -107,9 +144,9 @@ extension SearchViewController: UISearchBarDelegate {
 extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     //Chapter 32 - You simply return the number of rows to display based on the contents of the searchResults array and you create a UITableViewCell by hand to display the table rows.
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if !hasSearched {
-            return 0
-        } else if searchResults.count == 0 {
+        if isLoading {
+            return 1
+        } else if !hasSearched {
             return 1
         } else {
             return searchResults.count
@@ -118,7 +155,12 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     
     //chapter 33 - You only make a SearchResultCell if there are actually any results. If the array is empty, you’ll simply dequeue the cell for the nothingFoundCell identifier and return it since there is nothing to configure for that cell.
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if searchResults.count == 0 {
+        if isLoading {
+            let cell = tableView.dequeueReusableCell(withIdentifier: TableView.CellIdentifiers.loadingCell, for: indexPath)
+            let spinner = cell.viewWithTag(100) as! UIActivityIndicatorView
+            spinner.startAnimating()
+            return cell
+        } else if searchResults.count == 0 {
             return tableView.dequeueReusableCell(withIdentifier: TableView.CellIdentifiers.nothingFoundCell, for: indexPath)
         } else {
             let cell = tableView.dequeueReusableCell(withIdentifier: TableView.CellIdentifiers.searchResultCell, for: indexPath) as! SearchResultCell
@@ -142,7 +184,7 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, willSelectRowAt indexPath: IndexPath) -> IndexPath? {
-        if searchResults.count == 0 {
+        if searchResults.count == 0 || isLoading {
             return nil
         } else {
             return indexPath
