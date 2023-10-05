@@ -16,6 +16,9 @@ class SearchViewController: UIViewController {
     var searchResults = [SearchResult]()
     var hasSearched = false
     var isLoading = false
+    
+    //This is an optional because you won’t have a data task until the user performs a search.
+    var dataTask: URLSessionDataTask?
 
     //Chapter 33 - This defines a new struct, TableView, containing a secondary struct named CellIdentifiers which contains a constant named searchResultCell with the value “SearchResultCell”.
     struct TableView {
@@ -91,6 +94,9 @@ extension SearchViewController: UISearchBarDelegate {
         if !searchBar.text!.isEmpty {
             searchBar.resignFirstResponder()
             
+            //If there is an active data task, this cancels it, making sure that no old searches can ever get in the way of the new search.
+            dataTask?.cancel()
+            
             isLoading = true
             tableView.reloadData()
             
@@ -103,10 +109,10 @@ extension SearchViewController: UISearchBarDelegate {
             // 2 - Get a shared URLSession instance, which uses the default configuration with respect to caching, cookies, and other web stuff.
             let session = URLSession.shared
             // 3 - Create a data task. Data tasks are for fetching the contents of a given URL. The code from the completion handler will be invoked when the data task has received a response from the server.
-            let dataTask = session.dataTask(with: url) {data, response,
+            dataTask = session.dataTask(with: url) {data, response,
                 error in // 4 - The response parameter has the data type URLResponse, but that doesn’t have a property for the status code. Because you’re using the HTTP protocol, what you’ve really received is an HTTPURLResponse object, a subclass of URLResponse. So, first you cast it to the proper type, and then look at its statusCode property — you’ll consider the job a success only if the status code is 200.
-                if let error = error {
-                  print("Failure! \(error.localizedDescription)")
+                if let error = error as NSError?, error.code == -999 {
+                  return  // Search was cancelled
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     if let data = data {
                         self.searchResults = self.parse(data: data)
@@ -129,7 +135,7 @@ extension SearchViewController: UISearchBarDelegate {
                 }
             }
             // 5 - Finally, once you have created the data task, you need to call resume() to start it. This sends the request to the server on a background thread. So, the app is immediately free to continue
-            dataTask.resume()
+            dataTask?.resume()
         }
         
     }
